@@ -35,3 +35,8 @@ models:
       +materialized: table
     marts:
       +materialized: table
+
+seeds:
+  taxi_rides_ny:
+    taxi_zone_lookup:
+      +delimiter: "\t"

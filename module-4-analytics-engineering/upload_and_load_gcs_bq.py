@@ -10,6 +10,8 @@ Requires `google-cloud-storage` and `google-cloud-bigquery`.
 Authentication: set `GOOGLE_APPLICATION_CREDENTIALS` or use gcloud login.
 """
 import argparse
+import csv
+import gzip
 import re
 from pathlib import Path
 from google.cloud import storage, bigquery
@@ -17,7 +19,43 @@ from google.api_core.exceptions import NotFound
 import sys
 
 
-FILENAME_RE = re.compile(r"^(yellow|green)_tripdata_(\d{4})-(\d{2})\.csv(\.gz)?$")
+FILENAME_RE = re.compile(r"^(yellow|green|fhv)_tripdata_(\d{4})-(\d{2})\.csv(\.gz)?$")
+
+TYPE_MAP = {
+    # Common identifiers
+    "vendorid": "INTEGER",
+    "ratecodeid": "INTEGER",
+    "pulocationid": "INTEGER",
+    "dolocationid": "INTEGER",
+    "passenger_count": "INTEGER",
+    "trip_type": "INTEGER",
+    "payment_type": "INTEGER",
+    # Timestamps
+    "tpep_pickup_datetime": "TIMESTAMP",
+    "tpep_dropoff_datetime": "TIMESTAMP",
+    "lpep_pickup_datetime": "TIMESTAMP",
+    "lpep_dropoff_datetime": "TIMESTAMP",
+    # Strings
+    "store_and_fwd_flag": "STRING",
+    # Numerics / monetary values
+    "trip_distance": "NUMERIC",
+    "fare_amount": "NUMERIC",
+    "extra": "NUMERIC",
+    "mta_tax": "NUMERIC",
+    "tip_amount": "NUMERIC",
+    "tolls_amount": "NUMERIC",
+    "ehail_fee": "NUMERIC",
+    "improvement_surcharge": "NUMERIC",
+    "total_amount": "NUMERIC",
+    "congestion_surcharge": "NUMERIC",
+    "airport_fee": "NUMERIC",
+    # FHV columns
+    "dispatching_base_num": "STRING",
+    "pickup_datetime": "TIMESTAMP",
+    "dropoff_datetime": "TIMESTAMP",
+    "sr_flag": "INTEGER",
+    "affiliated_base_number": "STRING",
+}
 
 
 def create_bucket_if_not_exists(storage_client: storage.Client, bucket_name: str, project: str) -> None:
@@ -79,6 +117,26 @@ def load_csv_to_bq(bq_client: bigquery.Client, gcs_uri: str, project: str, datas
     load_job = bq_client.load_table_from_uri(gcs_uri, table_ref, job_config=job_config)
     load_job.result()
     print(f"Loaded to {table_ref} ({load_job.output_rows} rows, job {load_job.job_id})")
+
+
+def read_csv_header(path: Path) -> list[str]:
+    if path.suffix == ".gz":
+        opener = gzip.open
+    else:
+        opener = open
+
+    with opener(path, "rt", encoding="utf-8", newline="") as fh:
+        reader = csv.reader(fh)
+        return next(reader)
+
+
+def build_schema_from_header(header: list[str]) -> list[bigquery.SchemaField]:
+    schema = []
+    for col in header:
+        col_key = col.strip().lower()
+        field_type = TYPE_MAP.get(col_key, "STRING")
+        schema.append(bigquery.SchemaField(col, field_type))
+    return schema
 
 
 def run_merge(bq_client: bigquery.Client, project: str, dataset: str, taxi: str, year: str, month: str, staging_table: str):
@@ -181,7 +239,27 @@ def main():
         # Load to staging table
         staging_table = f"{taxi}_tripdata_{year}_{month}"
         try:
-            load_csv_to_bq(bq_client, gcs_uri, args.project, args.dataset, staging_table)
+            schema_fields = None
+            try:
+                header = read_csv_header(f)
+                schema_fields = build_schema_from_header(header)
+            except Exception as e:
+                print(f"Failed to build schema from {f}: {e}. Falling back to autodetect.")
+
+            if schema_fields:
+                job_config = bigquery.LoadJobConfig()
+                job_config.source_format = bigquery.SourceFormat.CSV
+                job_config.skip_leading_rows = 1
+                job_config.autodetect = False
+                job_config.schema = schema_fields
+                job_config.write_disposition = bigquery.WriteDisposition.WRITE_TRUNCATE
+                table_ref = f"{args.project}.{args.dataset}.{staging_table}"
+                print(f"Starting load job {gcs_uri} -> {table_ref} (schema from file)")
+                load_job = bq_client.load_table_from_uri(gcs_uri, table_ref, job_config=job_config)
+                load_job.result()
+                print(f"Loaded to {table_ref} ({load_job.output_rows} rows, job {load_job.job_id})")
+            else:
+                load_csv_to_bq(bq_client, gcs_uri, args.project, args.dataset, staging_table)
             if args.mode == 'merge':
                 run_merge(bq_client, args.project, args.dataset, taxi, year, month, staging_table)
             else:

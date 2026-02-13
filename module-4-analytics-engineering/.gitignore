@@ -3,3 +3,13 @@
 target/
 dbt_packages/
 logs/
+
+# local environments and data
+.venv/
+nyc_taxi_data/
+
+# local configs and credentials
+profiles.yml
+.user.yml
+*credentials*.json
+okok-aeced-8c5e16db967c.json

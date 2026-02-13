@@ -3,13 +3,13 @@ sources:
     description: Raw taxi trip data from NYC TLC
     database: |
       {%- if target.type == 'bigquery' -%}
-        {{ env_var('GCP_PROJECT_ID', 'please-add-your-gcp-project-id-here') }}
+        {{ env_var('GCP_PROJECT_ID', 'YOUR_GCP_PROJECT_ID') }}
       {%- else -%}
         taxi_rides_ny
       {%- endif -%}
     schema: |
       {%- if target.type == 'bigquery' -%}
-        nytaxi
+        {{ env_var('RAW_DATASET', 'YOUR_RAW_DATASET') }}
       {%- else -%}
         prod
       {%- endif -%}
@@ -19,7 +19,8 @@ sources:
     tables:
       - name: green_tripdata
         description: Raw green taxi trip records
-        loaded_at_field: lpep_pickup_datetime
+        config:
+          loaded_at_field: lpep_pickup_datetime
         columns:
           - name: vendorid
             description: "Taxi technology provider (1 = Creative Mobile Technologies, 2 = VeriFone Inc.) - Note: Raw data may contain nulls, filtered in staging"
@@ -62,7 +63,8 @@ sources:
 
       - name: yellow_tripdata
         description: Raw yellow taxi trip records
-        loaded_at_field: tpep_pickup_datetime
+        config:
+          loaded_at_field: tpep_pickup_datetime
         columns:
           - name: vendorid
             description: "Taxi technology provider (1 = Creative Mobile Technologies, 2 = VeriFone Inc.) - Note: Raw data may contain nulls, filtered in staging"
@@ -98,3 +100,38 @@ sources:
             description: Improvement surcharge
           - name: total_amount
             description: Total amount charged
+
+  - name: fhv_raw
+    description: Raw For-Hire Vehicle (FHV) trip data from NYC TLC
+    database: |
+      {%- if target.type == 'bigquery' -%}
+        {{ env_var('GCP_PROJECT_ID', 'YOUR_GCP_PROJECT_ID') }}
+      {%- else -%}
+        taxi_rides_ny
+      {%- endif -%}
+    schema: |
+      {%- if target.type == 'bigquery' -%}
+        {{ env_var('FHV_DATASET', 'YOUR_FHV_DATASET') }}
+      {%- else -%}
+        prod
+      {%- endif -%}
+    tables:
+      - name: fhv_tripdata
+        description: Raw FHV trip records for 2019
+        config:
+          loaded_at_field: pickup_datetime
+        columns:
+          - name: dispatching_base_num
+            description: TLC base number of the dispatching entity
+          - name: pickup_datetime
+            description: Timestamp when the trip began
+          - name: dropoff_datetime
+            description: Timestamp when the trip ended
+          - name: pulocationid
+            description: TLC Taxi Zone where the trip started
+          - name: dolocationid
+            description: TLC Taxi Zone where the trip ended
+          - name: sr_flag
+            description: Indicates if the trip is a shared ride
+          - name: affiliated_base_number
+            description: TLC base number of the affiliated base

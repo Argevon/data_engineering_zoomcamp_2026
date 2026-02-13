@@ -72,7 +72,8 @@ locationid	borough	zone	service_zone
 71	Brooklyn	East Flatbush/Farragut	Boro Zone
 72	Brooklyn	East Flatbush/Remsen Village	Boro Zone
 73	Queens	East Flushing	Boro Zone
-74	Manhattan	East Harlem North	Boro Zone75	Manhattan	East Harlem South	Boro Zone
+74	Manhattan	East Harlem North	Boro Zone
+75	Manhattan	East Harlem South	Boro Zone
 76	Brooklyn	East New York	Boro Zone
 77	Brooklyn	East New York/Pennsylvania Avenue	Boro Zone
 78	Bronx	East Tremont	Boro Zone

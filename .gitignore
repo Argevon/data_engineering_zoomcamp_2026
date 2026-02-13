@@ -1,0 +1,9 @@
+# global ignores
+**/.venv/
+**/nyc_taxi_data/
+**/.ipynb_checkpoints/
+
+# local configs and credentials
+**/profiles.yml
+**/.user.yml
+

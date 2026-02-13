@@ -1,0 +1,19 @@
+taxi_rides_ny:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account
+      project: YOUR_GCP_PROJECT_ID
+      dataset: YOUR_DBT_DATASET
+      location: US
+      keyfile: /path/to/your/service-account.json
+      threads: 4
+    prod:
+      type: bigquery
+      method: service-account
+      project: YOUR_GCP_PROJECT_ID
+      dataset: YOUR_DBT_DATASET
+      location: US
+      keyfile: /path/to/your/service-account.json
+      threads: 4
