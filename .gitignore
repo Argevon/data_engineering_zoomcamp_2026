@@ -7,3 +7,9 @@
 **/profiles.yml
 **/.user.yml
 
+
+.bruin.yml
+logs/runs
+logs/*.log
+__pycache__/
+*.py[cod]
