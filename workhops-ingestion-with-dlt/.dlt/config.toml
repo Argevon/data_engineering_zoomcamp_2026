@@ -1,0 +1,7 @@
+[sources]
+[sources.taxi_pipeline]
+api_url = "https://api.example.com/taxi/trips"
+
+[pipeline]
+pipeline_name = "taxi_pipeline"
+dataset_name = "taxi_data"

@@ -1,0 +1,5 @@
+.dlt/secrets.toml
+*.duckdb
+*.duckdb.wal
+__pycache__/
+*.pyc

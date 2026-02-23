@@ -1,0 +1,10 @@
+---
+description: dlt ingestion project guidance
+globs:
+  - "**/*.py"
+alwaysApply: false
+---
+- Keep extraction logic in `@dlt.resource` functions.
+- Use `dlt.config.value` for non-secret config values and `dlt.secrets.value` for credentials.
+- Keep pipeline execution in a `run()` function and call it from `if __name__ == "__main__"`.
+- For APIs without YAML scaffold, define endpoint URL and auth in `.dlt/config.toml` and `.dlt/secrets.toml`.
