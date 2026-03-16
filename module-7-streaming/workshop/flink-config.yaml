@@ -1,0 +1,5 @@
+jobmanager.memory.jvm-metaspace.size: 512m
+taskmanager.memory.jvm-metaspace.size: 512m
+execution.checkpointing.interval: 10s
+execution.checkpointing.mode: EXACTLY_ONCE
+execution.checkpointing.externalized-checkpoint-retention: RETAIN_ON_CANCELLATION

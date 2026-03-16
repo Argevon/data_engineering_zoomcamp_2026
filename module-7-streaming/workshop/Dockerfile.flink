@@ -1,0 +1,46 @@
+FROM flink:2.2.0-scala_2.12-java17
+
+USER root
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 python3-pip python3-venv curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
+
+WORKDIR /opt/flink/usrlib
+
+COPY pyproject.flink.toml /tmp/requirements.flink.txt
+RUN python3 -m venv /opt/venv
+RUN /opt/venv/bin/python -m pip install --upgrade pip
+RUN uv pip install --python /opt/venv/bin/python -r /tmp/requirements.flink.txt
+ENV PATH="/opt/venv/bin:${PATH}"
+
+RUN set -eu; \
+        mkdir -p /opt/flink/lib/connectors; \
+        curl -fL https://repo.maven.apache.org/maven2/org/apache/flink/flink-sql-connector-kafka/4.0.1-2.0/flink-sql-connector-kafka-4.0.1-2.0.jar -o /opt/flink/lib/connectors/flink-sql-connector-kafka.jar; \
+        curl -fL https://repo.maven.apache.org/maven2/org/postgresql/postgresql/42.7.7/postgresql-42.7.7.jar -o /opt/flink/lib/connectors/postgresql.jar; \
+        FOUND=0; \
+        for BASE in \
+            https://repo.maven.apache.org/maven2/org/apache/flink/flink-connector-jdbc \
+            https://repo.maven.apache.org/maven2/org/apache/flink/flink-sql-connector-jdbc; do \
+            if curl -fsSL "$BASE/maven-metadata.xml" -o /tmp/jdbc-metadata.xml; then \
+                VER=$(sed -n 's:.*<version>\(.*-2\.0\)</version>.*:\1:p' /tmp/jdbc-metadata.xml | tail -n1); \
+                if [ -n "$VER" ]; then \
+                    ARTIFACT=$(basename "$BASE"); \
+                    if curl -fL "$BASE/$VER/$ARTIFACT-$VER.jar" -o /opt/flink/lib/connectors/flink-connector-jdbc.jar; then \
+                        FOUND=1; \
+                        break; \
+                    fi; \
+                fi; \
+            fi; \
+        done; \
+        if [ "$FOUND" -ne 1 ]; then \
+            echo "Unable to download a Flink JDBC connector compatible with -2.0 runtime"; \
+            exit 1; \
+        fi
+
+COPY flink-config.yaml /opt/flink/conf/config.yaml
+
+USER flink
