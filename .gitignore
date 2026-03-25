@@ -2,7 +2,11 @@
 **/.venv/
 **/nyc_taxi_data/
 **/.ipynb_checkpoints/
-
+.env
+*.env
+.env.*
+**/.env
+**/.env.*
 # local configs and credentials
 **/profiles.yml
 **/.user.yml
@@ -13,3 +17,4 @@ logs/runs
 logs/*.log
 __pycache__/
 *.py[cod]
+de-zoomcamp-project/.envdf -h
