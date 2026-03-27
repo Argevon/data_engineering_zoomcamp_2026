@@ -1,5 +1,27 @@
 version: "3.8"
 
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__WEBSERVER__SECRET_KEY: "mevo_secret_key"
+    GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/keys/gcp-key.json
+  env_file:
+    - ../.env
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ../src:/opt/airflow/project/src
+    - ../.env:/opt/airflow/project/.env
+    - ../../module-4-analytics-engineering/okok-aeced-8c5e16db967c.json:/opt/airflow/keys/gcp-key.json:ro
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    - postgres
+
 services:
   postgres:
     image: postgres:15
@@ -9,47 +31,27 @@ services:
       POSTGRES_DB: airflow
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
 
   airflow-init:
-    image: apache/airflow:2.9.3-python3.11
-    depends_on:
-      - postgres
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
+    <<: *airflow-common
     entrypoint: /bin/bash
     command: -c "airflow db migrate && airflow users create --username admin --password admin --firstname a --lastname b --role Admin --email admin@example.com"
 
   airflow-webserver:
-    image: apache/airflow:2.9.3-python3.11
-    depends_on:
-      - postgres
-      - airflow-init
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
+    <<: *airflow-common
     command: webserver
     ports:
       - "8080:8080"
+    restart: always
 
   airflow-scheduler:
-    image: apache/airflow:2.9.3-python3.11
-    depends_on:
-      - postgres
-      - airflow-init
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
+    <<: *airflow-common
     command: scheduler
+    restart: always
 
 volumes:
   postgres-db-volume:
