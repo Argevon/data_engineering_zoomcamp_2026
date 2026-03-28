@@ -21,12 +21,12 @@ with DAG(
 ) as dag:
     ingest_mevo = BashOperator(
         task_id="ingest_mevo",
-        bash_command="cd /opt/airflow/project && python src/ingest_mevo.py",
+        bash_command="cd /opt/mevo_project && python src/ingest_mevo.py",
     )
 
     load_to_bq = BashOperator(
         task_id="load_to_bq",
-        bash_command="cd /opt/airflow/project && python src/load_to_bq.py",
+        bash_command="cd /opt/mevo_project && python src/load_to_bq.py",
     )
 
     ingest_mevo >> load_to_bq

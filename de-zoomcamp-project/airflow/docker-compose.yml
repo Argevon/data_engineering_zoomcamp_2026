@@ -1,5 +1,3 @@
-version: "3.8"
-
 x-airflow-common: &airflow-common
   build:
     context: .
@@ -10,14 +8,14 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
     AIRFLOW__WEBSERVER__SECRET_KEY: "mevo_secret_key"
-    GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/keys/gcp-key.json
+    GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/keys/${GCP_KEY_FILENAME:-okok-aeced-8c5e16db967c.json}
   env_file:
-    - ../.env
+    - ${MEVO_ENV_HOST_PATH:-../.env}
   volumes:
     - ./dags:/opt/airflow/dags
-    - ../src:/opt/airflow/project/src
-    - ../.env:/opt/airflow/project/.env
-    - ../../module-4-analytics-engineering/okok-aeced-8c5e16db967c.json:/opt/airflow/keys/gcp-key.json:ro
+    - ${MEVO_SRC_HOST_PATH:-../src}:/opt/mevo_project/src
+    - ${MEVO_ENV_HOST_PATH:-../.env}:/opt/mevo_project/.env
+    - ${GCP_KEY_DIR_HOST_PATH:-../../module-4-analytics-engineering}:/opt/airflow/keys:ro
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     - postgres

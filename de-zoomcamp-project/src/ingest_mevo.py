@@ -46,10 +46,10 @@ def main() -> None:
     client_identifier = require_env("MEVO_CLIENT_IDENTIFIER")
 
     snapshot_ts = datetime.now(timezone.utc)
+    ts_compact = snapshot_ts.strftime("%Y%m%dT%H%M%SZ")
     dt = snapshot_ts.strftime("%Y-%m-%d")
     hh = snapshot_ts.strftime("%H")
     mm = snapshot_ts.strftime("%M")
-    ts_compact = snapshot_ts.strftime("%Y%m%dT%H%M%SZ")
 
     status_url = f"{base_url}/station_status.json"
     info_url = f"{base_url}/station_information.json"
@@ -57,33 +57,46 @@ def main() -> None:
     status_payload = fetch_json(status_url, client_identifier)
     info_payload = fetch_json(info_url, client_identifier)
 
-    status_blob = f"raw/station_status/dt={dt}/hh={hh}/mm={mm}/{ts_compact}.json"
-    info_blob = f"raw/station_information/dt={dt}/hh={hh}/mm={mm}/{ts_compact}.json"
-
+    # Raw JSON stored for audit trail (partitioned for easy querying by date)
+    status_blob = f"raw/station_status/dt={dt}/hh={hh}/{ts_compact}.json"
+    info_blob = f"raw/station_information/dt={dt}/hh={hh}/{ts_compact}.json"
     upload_text_to_gcs(bucket_name, status_blob, json.dumps(status_payload, ensure_ascii=True))
     upload_text_to_gcs(bucket_name, info_blob, json.dumps(info_payload, ensure_ascii=True))
 
+    # Build DataFrame - let pandas infer types from API, only add metadata columns
     stations = status_payload.get("data", {}).get("stations", [])
     df = pd.DataFrame(stations)
     df["snapshot_ts"] = snapshot_ts
-    df["snapshot_date"] = snapshot_ts.date().isoformat()
+    df["snapshot_date"] = snapshot_ts.date()
 
-    local_dir = Path("tmp")
+    # Flat bronze path - no deep nesting, one parquet per snapshot
+    local_dir = Path("/tmp/mevo_ingest")
     local_dir.mkdir(parents=True, exist_ok=True)
     parquet_path = local_dir / f"station_status_{ts_compact}.parquet"
     df.to_parquet(parquet_path, index=False)
 
-    bronze_blob = f"bronze/station_status/dt={dt}/hh={hh}/mm={mm}/{parquet_path.name}"
+    bronze_blob = f"bronze/station_status/{parquet_path.name}"
     upload_file_to_gcs(bucket_name, bronze_blob, parquet_path)
+
+    # station_information DIM - single "latest" parquet, always overwritten
+    info_stations = info_payload.get("data", {}).get("stations", [])
+    df_info = pd.DataFrame(info_stations)
+    df_info["snapshot_ts"] = snapshot_ts
+    info_parquet_path = local_dir / "station_information_latest.parquet"
+    df_info.to_parquet(info_parquet_path, index=False)
+    info_bronze_blob = "bronze/station_information/latest.parquet"
+    upload_file_to_gcs(bucket_name, info_bronze_blob, info_parquet_path)
 
     print(
         json.dumps(
             {
                 "bucket": bucket_name,
-                "rows": len(df),
+                "status_rows": len(df),
+                "info_rows": len(df_info),
                 "raw_status_blob": status_blob,
                 "raw_info_blob": info_blob,
-                "bronze_blob": bronze_blob,
+                "bronze_status_blob": bronze_blob,
+                "bronze_info_blob": info_bronze_blob,
             },
             ensure_ascii=True,
         )
