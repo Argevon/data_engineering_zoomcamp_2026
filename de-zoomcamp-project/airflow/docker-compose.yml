@@ -15,6 +15,7 @@ x-airflow-common: &airflow-common
     - ./dags:/opt/airflow/dags
     - ${MEVO_SRC_HOST_PATH:-../src}:/opt/mevo_project/src
     - ${MEVO_ENV_HOST_PATH:-../.env}:/opt/mevo_project/.env
+    - ${MEVO_DBT_HOST_PATH:-../dbt}:/opt/mevo_project/dbt
     - ${GCP_KEY_DIR_HOST_PATH:-../../module-4-analytics-engineering}:/opt/airflow/keys:ro
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:

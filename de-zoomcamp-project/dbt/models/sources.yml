@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: mevo
+    database: okok-aeced
+    schema: de_zoomcamp_project
+    tables:
+      - name: station_status_snapshots
+        description: "MEVO GBFS station_status snapshots co 5 min"
+        columns:
+          - name: station_id
+            tests: [not_null]
+          - name: snapshot_ts
+            tests: [not_null]
+
+      - name: station_information
+        description: "MEVO GBFS station_information - statyczne dane o stacjach"
+        columns:
+          - name: station_id
+            tests: [not_null]

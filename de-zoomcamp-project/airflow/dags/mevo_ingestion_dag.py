@@ -29,4 +29,13 @@ with DAG(
         bash_command="cd /opt/mevo_project && python src/load_to_bq.py",
     )
 
-    ingest_mevo >> load_to_bq
+    dbt_run = BashOperator(
+        task_id="dbt_run",
+        bash_command=(
+            "if [ $((10#$(date +%M) % 30)) -eq 0 ]; "
+            "then cd /opt/mevo_project/dbt && dbt run --profiles-dir . --no-use-colors; "
+            "else echo 'Skipping dbt_run (runs every 30 minutes).'; fi"
+        ),
+    )
+
+    ingest_mevo >> load_to_bq >> dbt_run
